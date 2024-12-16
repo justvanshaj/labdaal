@@ -1,5 +1,6 @@
 streamlit
 Pillow
 fpdf
+opencv-python-headless
 opencv-python
 numpy
