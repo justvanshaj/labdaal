@@ -1,47 +1,36 @@
+import cv2
 import streamlit as st
+import numpy as np
 
-# Set the page configuration (title and favicon)
-st.set_page_config(
-    page_title="Sieve Shaker Calculator",
-    page_icon="favicon.ico"
-)
+# Function to detect impurities
+def detect_impurities(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    impurity_count = len(contours)
+    cv2.drawContours(image, contours, -1, (0, 255, 0), 2)
+    return image, impurity_count
 
-# Hide Streamlit's default UI components
-hide_st_style = """
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-</style>
-"""
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# Streamlit App
+st.title("Real-Time Daal Impurity Detection")
 
-# Define session state to manage navigation between screens
-if 'screen' not in st.session_state:
-    st.session_state.screen = 'home'
+# Start video capture
+run = st.checkbox("Start Camera")
+FRAME_WINDOW = st.image([])
 
-# Function to navigate to a specific screen
-def navigate_to(screen):
-    st.session_state.screen = screen
+if run:
+    cap = cv2.VideoCapture(0)  # Capture from default webcam
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            st.error("Unable to access camera.")
+            break
 
-# Sieve Shaker Calculator Screen
-st.header("Sieve Shaker Calculator")
+        # Detect impurities in each frame
+        processed_frame, impurity_count = detect_impurities(frame)
 
-sample = st.number_input("Enter Sample:", min_value=1, step=1)
+        # Show live frame with impurity detection
+        FRAME_WINDOW.image(processed_frame, channels="BGR")
+        st.write(f"Number of impurities detected: {impurity_count}")
 
-sieve_inputs = []
-labels = ["60#", "100#", "150#", "200#", "240#", "300#", "350#", "Base"]
-for label in labels:
-    value = st.number_input(f"Enter {label}:", min_value=0.000, step=0.001, format="%.3f")
-    sieve_inputs.append(value)
-
-if sample > 0:
-    cumulative = 0
-    for idx, weight in enumerate(sieve_inputs):
-        cumulative += (weight * 100) / sample
-        st.write(f"{labels[idx]}: {cumulative:.4f}%")
-else:
-    st.write("Please enter a sample greater than 0.")
-
-if st.button("Back to Home"):
-    navigate_to('home')
+    cap.release()
